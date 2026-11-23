@@ -27,8 +27,15 @@ h1 { font: 400 clamp(34px, 5.6vw, 60px)/1.05 "IM Fell English", Georgia, serif; 
 .sub { color: var(--ink2); margin: 0; }
 .rule { width: 56px; height: 1.5px; background: var(--gold); margin: 22px 0 40px; }
 .stage { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 48px; align-items: start; }
+.stage[data-mode="wide"] { grid-template-columns: 1fr; gap: 40px; }
+.stage[data-mode="wide"] .side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.switch { display: flex; gap: 6px; margin: 0 0 12px; }
+.switch button { all: unset; cursor: pointer; font: 13px "IM Fell English SC", Georgia, serif; letter-spacing: .18em; text-transform: uppercase; color: var(--ink2); padding: 4px 10px; border: 1px solid rgba(30,28,25,.2); }
+.switch button[aria-pressed="true"] { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.switch button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .film { background: #000; line-height: 0; box-shadow: 0 0 0 1px rgba(30,28,25,.15), 0 26px 50px -28px rgba(30,28,25,.6); }
 .film video { display: block; height: min(84vh, 900px); width: auto; aspect-ratio: 9 / 16; max-width: 100%; background: #000; }
+.stage[data-mode="wide"] .film video { width: 100%; height: auto; aspect-ratio: 16 / 9; max-height: calc(100vh - 24px); }
 h2 { font: 400 15px "IM Fell English SC", Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: var(--ink2); margin: 0 0 12px; }
 ol.parts { list-style: none; margin: 0 0 40px; padding: 0; border-top: 1px solid rgba(30,28,25,.14); }
 ol.parts li { border-bottom: 1px solid rgba(30,28,25,.14); }
@@ -42,8 +49,10 @@ ol.parts li.now button { background: rgba(217,160,42,.2); }
 @media (max-width: 760px) {
   main { padding-top: 5vh; }
   .stage { grid-template-columns: 1fr; gap: 32px; }
-  .film { justify-self: center; width: 100%; max-width: 480px; }
-  .film video { width: 100%; height: auto; }
+  .filmcol { justify-self: center; width: 100%; max-width: 480px; }
+  .stage[data-mode="wide"] .filmcol { max-width: none; }
+  .stage[data-mode="wide"] .side { grid-template-columns: 1fr; gap: 0; }
+  .film video, .stage[data-mode="wide"] .film video { width: 100%; height: auto; }
 }
 </style>
 </head><body>
@@ -52,13 +61,18 @@ ol.parts li.now button { background: rgba(217,160,42,.2); }
   <h1>The Fundamental Rights of the Weimar Constitution</h1>
   <p class="sub">Carl Schmitt · a lecture at the University of Cologne · 16 June 1933</p>
   <div class="rule"></div>
-  <div class="stage">
-    <div class="film">
-      <video id="v" controls playsinline preload="metadata" poster="poster.jpg" width="720" height="1280">
-        <source src="schmitt-cologne-1933.mp4" type="video/mp4">
-      </video>
+  <div class="stage" id="stage" data-mode="tall">
+    <div class="filmcol">
+      <div class="switch" role="group" aria-label="Shape of the film">
+        <button type="button" data-mode="wide" aria-pressed="false">Wide</button>
+        <button type="button" data-mode="tall" aria-pressed="true">Vertical</button>
+      </div>
+      <div class="film">
+        <video id="v" controls playsinline preload="metadata" poster="poster.jpg" src="schmitt-cologne-1933.mp4"></video>
+      </div>
     </div>
-    <div>
+    <div class="side">
+      <div>
       <h2>The lecture in eleven parts</h2>
       <ol class="parts" id="parts">
         <li><button data-t="0"><span class="t">0:00</span><span>The second part of the Weimar Constitution</span></button></li>
@@ -73,6 +87,7 @@ ol.parts li.now button { background: rgba(217,160,42,.2); }
         <li><button data-t="597.5"><span class="t">9:57</span><span>The minutes of the National Assembly</span></button></li>
         <li><button data-t="610.1"><span class="t">10:10</span><span>The closing passage</span></button></li>
       </ol>
+      </div>
       <div class="about">
         <h2>About this film</h2>
         <p>The recording of this lecture and its transcript come from the Carl-Schmitt-Gesellschaft. The film gives the whole lecture as it survives, in English, in Schmitt’s own words, translated line by line from the transcript. One side of the original records is lost; the closing passage begins where the surviving record resumes.</p>
@@ -94,12 +109,28 @@ ol.parts li.now button { background: rgba(217,160,42,.2); }
 </main>
 <script>
 (function () {
+  var stage = document.getElementById("stage"), v0 = document.getElementById("v");
+  var films = { wide: { src: "schmitt-cologne-1933-wide.mp4", poster: "poster-wide.jpg" }, tall: { src: "schmitt-cologne-1933.mp4", poster: "poster.jpg" } };
+  function setMode(mode, keep) {
+    if (stage.getAttribute("data-mode") === mode && keep) return;
+    var t = v0.currentTime || 0, playing = !v0.paused && !v0.ended;
+    stage.setAttribute("data-mode", mode);
+    [].forEach.call(document.querySelectorAll(".switch button"), function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-mode") === mode ? "true" : "false"); });
+    v0.poster = films[mode].poster; v0.src = films[mode].src;
+    if (keep && t > 0) v0.addEventListener("loadedmetadata", function () { v0.currentTime = t; if (playing) { var p = v0.play(); if (p && p.catch) p.catch(function () {}); } }, { once: true });
+  }
+  [].forEach.call(document.querySelectorAll(".switch button"), function (b) { b.addEventListener("click", function () { setMode(b.getAttribute("data-mode"), true); }); });
+  if (window.matchMedia("(min-width: 900px) and (orientation: landscape)").matches) setMode("wide", false);
+})();
+(function () {
   var v = document.getElementById("v"), items = [].slice.call(document.querySelectorAll("#parts li"));
   items.forEach(function (li) {
     li.querySelector("button").addEventListener("click", function () {
       v.currentTime = parseFloat(this.getAttribute("data-t"));
       var p = v.play(); if (p && p.catch) p.catch(function () {});
+      var r = v.getBoundingClientRect();
       if (window.matchMedia("(max-width: 760px)").matches) v.scrollIntoView({ behavior: "smooth", block: "start" });
+      else if (r.top < 0 || r.bottom > window.innerHeight) v.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
   });
   v.addEventListener("timeupdate", function () {
